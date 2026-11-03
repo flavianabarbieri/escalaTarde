@@ -163,7 +163,7 @@
     const isoLocal = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     const hoje = new Date();
     const chaves = Object.keys(ESCALA).sort();
-    const primeira = chaves[0], ultima = chaves.at(-1);
+    const primeira = chaves[0], ultima = '2030-12';
 
     const CHAVE_EQUIPE = 'escalaEquipeRecepcaoTardeV1';
     const CHAVE_ANOTACOES = 'escalaAnotacoesRecepcaoTardeV1';
@@ -262,6 +262,14 @@
     const FERIADOS = {};
     for(let ano=Number(primeira.slice(0,4));ano<=Number(ultima.slice(0,4));ano++) Object.assign(FERIADOS,feriadosDoAno(ano));
     function feriadoEm(data) { return FERIADOS[isoLocal(data)] || ''; }
+    function observacoesFeriadosMes(ano, mes) {
+      const total = new Date(ano,mes,0).getDate(), itens=[];
+      for(let dia=1;dia<=total;dia++) {
+        const nome=feriadoEm(new Date(ano,mes-1,dia));
+        if(nome) itens.push(`${dia}: ${nome}`);
+      }
+      return itens;
+    }
     function estaDeFerias(cfg,data) {
       if (!cfg?.feriasInicio || Number(cfg.feriasDias)<1) return false;
       const [a,m,d]=cfg.feriasInicio.split('-').map(Number);
@@ -410,9 +418,13 @@
         const codigoHtml = codigo ? `<span class="codigo">${codigo}</span>` : '';
         calendario.insertAdjacentHTML('beforeend',`<button class="dia ${classe} ${selecionado} ${temAnotacao ? 'com-anotacao' : ''} ${natal ? 'natal' : ''} ${aniversario ? 'aniversario' : ''} ${feriasEquipe.length ? 'tem-ferias-equipe' : ''}" data-data="${chaveData}" title="${escaparHtml([feriado,textoAnotado,feriasEquipe.length ? 'Férias: '+feriasEquipe.join(', ') : ''].filter(Boolean).join(' • '))}"><span class="numero">${d}</span>${marcaFeriado}${marcaFerias}${balaoAniversario}${marca}${codigoHtml}</button>`);
       }
-      if (bloco?.observacoes.length) {
+      // Não repetir datas anotadas em 2026 nos calendários de 2027 em diante.
+      const itensMes = mesVisivel.getFullYear() >= 2027
+        ? observacoesFeriadosMes(mesVisivel.getFullYear(),mesVisivel.getMonth()+1)
+        : (bloco?.observacoes || []).map(o=>String(o).replace(/^\s*\*\s*/, ''));
+      if (itensMes.length) {
         observacoes.hidden=false;
-        observacoes.innerHTML='<strong>Observações do mês</strong>'+bloco.observacoes.map(o=>`<p>${escaparHtml(String(o).replace(/^\s*\*\s*/, ''))}</p>`).join('');
+        observacoes.innerHTML='<strong>Observações do mês</strong>'+itensMes.map(o=>`<p>${escaparHtml(o)}</p>`).join('');
       } else observacoes.hidden=true;
       document.querySelector('#anterior').disabled = chave<=primeira;
       document.querySelector('#proximo').disabled = chave>=ultima;
